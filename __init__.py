@@ -295,17 +295,14 @@ css_styles = re.sub(r"\/\*[^\*\\]+\*\/", "", css_styles)
 with open(css_min_path, "w+", encoding="utf-8") as file_handle:
     file_handle.write(css_styles)
 
-for tag in docset_soup.body.children:
-    if isinstance(tag, Comment):  # remove html comments
-        tag.decompose()
-
 index_html = str(docset_soup)
 
 logging.debug(f"writing to '{index_path}' ... ")
 
 try:
     with open(index_path, "w+", encoding="utf-8") as file_handle:
-        file_handle.write(htmlmin.minify(index_html, remove_empty_space=True))
+        file_handle.write(htmlmin.minify(index_html, remove_empty_space=True,
+                          remove_comments=True))
 except Exception as error_msg:
     logging.error(f"minification of '{index_path}' failed -> error: {error_msg}")
     with open(index_path, "w+", encoding="utf-8") as file_handle:
@@ -315,9 +312,10 @@ index_new_size = index_path.stat().st_size
 index_len_diff = index_old_size - index_new_size
 
 logging.debug(
-    f"writing to '{index_path}' completed -> reduced size by {index_len_diff} bytes "
+    f"writing to '{index_path}' completed -> reduced size by {index_len_diff} bytes"
 )
 
+# TODO: convert images to modern formats
 img_files = (
     list(static_files_path.glob("*.png"))
     + list(static_files_path.glob("*.jpg"))
@@ -350,6 +348,7 @@ sys.exit(0)
 
 meta_path = docset_path / "meta.json"
 
+#FIXME: search and fix bug
 if not meta_path.exists():
     logging.debug(f"preparing contents of '{meta_path}' ... ")
 
