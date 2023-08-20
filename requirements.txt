@@ -1,4 +1,4 @@
-beautifulsoup4==4.11.1
+beautifulsoup4==4.12.2
 css-parser==1.0.8
 doc2dash==3.0.0
 htmlmin==0.1.12
