@@ -74,7 +74,8 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          path: "Requests.docset/"
+          path: "requests_docset_gh/Requests.docset/"
+          name: "Requests.docset"
           retention-days: 5
 
       # - name: git push to github
