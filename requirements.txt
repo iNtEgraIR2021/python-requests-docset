@@ -4,4 +4,4 @@ doc2dash==3.0.0
 htmlmin==0.1.12
 loguru==0.7.2
 requests==2.31.0
-selectolax==0.3.16
+selectolax==0.3.17
