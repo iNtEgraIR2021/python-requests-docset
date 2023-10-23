@@ -1,5 +1,5 @@
 beautifulsoup4==4.12.2
-css-parser==1.0.9
+css-parser==1.0.10
 doc2dash==3.0.0
 htmlmin==0.1.12
 loguru==0.7.2
