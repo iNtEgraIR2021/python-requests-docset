@@ -34,7 +34,7 @@ jobs:
         run: timeout 180s sudo apt upgrade -y || true
 
       - name: Setup Python 3.x
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         with:
           python-version: 3.11.0
           cache: "pip"
