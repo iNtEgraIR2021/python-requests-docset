@@ -72,7 +72,7 @@ jobs:
       - name: return directory size of working dir
         run: timeout 60s du -sh
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: "requests_docset_gh/Requests.docset/"
           name: "Requests.docset"
