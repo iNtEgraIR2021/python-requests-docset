@@ -6,7 +6,6 @@ import re
 import sys
 import zipfile
 
-from bs4 import BeautifulSoup, Comment
 import css_parser
 import htmlmin
 import loguru
@@ -26,13 +25,13 @@ logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG, force=Tr
 
 css_parser.log.setLevel(logging.INFO)
 
-zip_file = Path("requests-latest.zip")
+zip_file = Path("requests-stable.zip")
 
 logging.debug(f"requesting '{zip_file}' ... ")
 
 dl_req = requests.get(
-    "https://requests.readthedocs.io/_/downloads/en/latest/htmlzip/", stream=True,
-    timeout=20
+    "https://requests.readthedocs.io/_/downloads/en/stable/htmlzip/", stream=True,
+    timeout=50
 )
 if dl_req.ok:
     with open(zip_file, "wb") as file_handle:
@@ -58,7 +57,7 @@ logging.debug(f"extracted '{zip_file}'")
 logging.debug("executing 'doc2dash' ... ")
 
 os.system(
-    "doc2dash -n Requests -i requests-latest/_static/requests-sidebar.png -f -I index.html requests-latest/"
+    "doc2dash -n Requests -i requests-stable/_static/requests-sidebar.png -f -I index.html requests-stable/"
 )
 
 logging.debug("executed 'doc2dash'")
@@ -114,40 +113,21 @@ index_len = len(index_html)
 
 logging.debug(f"reading from '{index_path}' (length: {index_len}) completed ")
 
-docset_soup = BeautifulSoup(str(index_html), features="html.parser")
-
 dom_tree = HTMLParser(str(index_html))
 
 logging.debug("removing interactive contents ...")
 
-# TODO: replace with selectolax -> https://selectolax.readthedocs.io/en/latest/
-
 # docs: https://selectolax.readthedocs.io/en/latest/parser.html#selectolax.parser.HTMLParser.strip_tags
-dom_tree.strip_tags(["iframe","script","video"]) 
-# dom_tree.css("#searchbox")
-#   tag.decompose() -> https://selectolax.readthedocs.io/en/latest/parser.html#selectolax.parser.Node.decompose
+dom_tree.strip_tags(["iframe","script","video", "#searchbox", "#native-ribbon", "a.github",
+                     "a.reference.external.image-reference", 'link[rel="search"]', 'link[rel="index"]']) 
 
-for tag_selector in [
-    docset_soup.select("#searchbox"),
-    docset_soup.select("script"),
-    docset_soup.select("iframe"),
-    docset_soup.select("#native-ribbon"),
-    docset_soup.select("a.github"),
-    docset_soup.select("a.reference.external.image-reference"),
-    docset_soup.select('link[rel="search"]'),
-    docset_soup.select('link[rel="index"]'),
-]:
-    for tag in tag_selector:
-        tag.decompose()
-
-index_len = len(index_html)
-
+index_len = len(dom_tree.html)
 logging.debug(f"removed interactive contents -> new length: {index_len} ")
 
-viewport_tags = docset_soup.select('meta[name="viewport"]')
+viewport_tags = dom_tree.css('meta[name="viewport"]')
 if len(viewport_tags) == 2:
     viewport_tags[1].decompose()
-    logging.debug("removed surplus 'viewport' tag ")
+    logging.debug("removed surplus 'viewport' tag")
 
 static_files_path = documents_path / "_static"
 
@@ -161,21 +141,21 @@ for js_file in js_files:
     except Exception as error_msg:
         logging.error(f"failed to delete '{js_file}' -> error: {error_msg}")
 
-css_links = docset_soup.select('link[rel="stylesheet"]')
+css_links = dom_tree.css('link[rel="stylesheet"]')
 css_styles = ""
 import_pattern = re.compile(r"(?m)(\@import url\(\")([^\"]+)(\"\)\;)")
 
 for css_link in css_links:
-    link_href = str(css_link.get("href"))
+    link_href = str(css_link.attrs["href"])
     link_path = documents_path / Path(link_href)
-    logging.debug(f"validating existance of '{link_path}' ... ")
+    logging.debug(f"validating existance of '{link_path}' ...")
     if not link_path.exists():
         logging.debug(f"removing '{css_link}' -> source file does not seem to exist")
         css_link.decompose()
     else:
         logging.debug(f"found '{link_path}' (size: {link_path.stat().st_size}) ")
 
-        logging.debug(f"reading from '{link_path}' ... ")
+        logging.debug(f"reading from '{link_path}' ...")
 
         css_rules = ""
         with open(link_path, "r", encoding="utf-8") as file_handle:
@@ -205,18 +185,19 @@ for css_link in css_links:
 
         css_styles += css_rules
 
-for style_tag in docset_soup.select("style"):
+for style_tag in dom_tree.css("style"):
     css_styles += "\n" + str(style_tag.text).strip()
     style_tag.decompose()
 
 css_min_file = "styles.min.css"
 css_min_path = static_files_path / css_min_file
-last_link = docset_soup.select('link[rel="stylesheet"]')[-1]
-last_link["href"] = "_static/" + css_min_file
-last_link["type"] = "text/css"
-del last_link["media"]
+last_link = dom_tree.css('link[rel="stylesheet"]')[-1]
+last_link.attrs["href"] = "_static/" + css_min_file
+last_link.attrs["type"] = "text/css"
+if "media" in last_link.attrs:
+    del last_link.attrs["media"]
 
-css_links = docset_soup.select('link[rel="stylesheet"]')
+css_links = dom_tree.css('link[rel="stylesheet"]')
 for link_index in range(len(css_links) - 1):  # remove all other 'link' tags
     css_links[link_index].decompose()
 
@@ -295,7 +276,7 @@ css_styles = re.sub(r"\/\*[^\*\\]+\*\/", "", css_styles)
 with open(css_min_path, "w+", encoding="utf-8") as file_handle:
     file_handle.write(css_styles)
 
-index_html = str(docset_soup)
+index_html = str(dom_tree.html)
 
 logging.debug(f"writing to '{index_path}' ... ")
 
