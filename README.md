@@ -1,5 +1,3 @@
 # Docset generator for requests
 
-As the title reads this repo generates docsets for the python requests module.
-
-
+As the title reads this repository generates docsets for the python requests module.
