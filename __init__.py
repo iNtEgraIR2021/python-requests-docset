@@ -61,7 +61,7 @@ logger.debug(f"extracted '{zip_file}'")
 logger.debug("executing 'doc2dash' ...")
 
 os.system(
-    f"doc2dash -n Requests -i {zip_name}/_static/requests-sidebar.png -f -I index.html {zip_name}/"
+    f"doc2dash -n Requests -i {zip_file.stem}/_static/requests-sidebar.png -f -I index.html {zip_file.stem}/"
 )
 
 logger.debug("executed 'doc2dash'")
