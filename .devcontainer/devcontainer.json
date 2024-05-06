@@ -1,0 +1,25 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/universal:2",
+    "onCreateCommand": "sudo apt update && sudo apt upgrade -y && virtualenv venv && source venv/bin/activate && python -m pip install --upgrade pip wheel setuptools && pip install -r requirements.txt",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "streetsidesoftware.code-spell-checker",
+                "eamodio.gitlens",
+                "ms-python.python",
+                "ms-python.isort",
+                "ms-python.black-formatter",
+                "charliermarsh.ruff",
+                "DavidAnson.vscode-markdownlint",
+                "SonarSource.sonarlint-vscode"
+            ],
+            "settings":{
+                "gitlens.telemetry.enabled": false,
+                "sonarlint.disableTelemetry": true,
+                "redhat.telemetry.enabled": false,
+                "pylint.args": ["--max-line-length=120", "--logging-format-style=fstr"],
+                "flake8.args": ["--max-line-length=120"]
+            }
+        }
+    }
+}

@@ -1,10 +1,14 @@
 tasks:
   - init: >
-      sudo apt update && sudo apt upgrade -y && virtualenv venv && source venv/bin/activate && python -m pip install --upgrade pip && pip install -r requirements.txt
+      sudo apt update && sudo apt upgrade -y && virtualenv venv && source venv/bin/activate && python -m pip install --upgrade pip wheel setuptools && pip install -r requirements.txt
       python __init__.py
 vscode:
   extensions:
-    - ms-python.python
+    - streetsidesoftware.code-spell-checker
     - eamodio.gitlens
-    - SonarSource.sonarlint-vscode
+    - ms-python.python
+    - ms-python.isort
+    - ms-python.black-formatter
     - charliermarsh.ruff
+    - DavidAnson.vscode-markdownlint
+    - SonarSource.sonarlint-vscode

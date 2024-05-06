@@ -1,4 +1,8 @@
 {
     "gitlens.telemetry.enabled": false,
-    "sonarlint.disableTelemetry": true
+    "sonarlint.disableTelemetry": true,
+    "redhat.telemetry.enabled": false,
+    // "python.defaultInterpreterPath": "venv/bin/python",
+    "flake8.args":["--max-line-length=120"],
+    "pylint.args":["--max-line-length=120", "--logging-format-style=fstr"]
 }
