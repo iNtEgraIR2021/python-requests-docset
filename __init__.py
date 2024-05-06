@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import re
 import sys
+import shutil
 import zipfile
 
 import css_parser
@@ -16,7 +17,7 @@ from logging_interceptor import InterceptHandler
 
 logger = loguru.logger
 logger.remove()
-# init rotated log file 
+# init rotated log file
 logger.add("debug.log", rotation="10 MB", catch=True, delay=True, encoding="utf-8")
 # also log to standard output (console)
 logger.add(sys.stdout, colorize=True)
@@ -26,83 +27,86 @@ logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG, force=Tr
 css_parser.log.setLevel(logging.INFO)
 
 zip_file = Path("requests-stable.zip")
+zip_name = zip_file.parts[-1]
 
-logging.debug(f"requesting '{zip_file}' ... ")
+logger.debug(f"downloading '{zip_name}' to {zip_file.absolute().as_posix()} ...")
 
 dl_req = requests.get(
-    "https://requests.readthedocs.io/_/downloads/en/stable/htmlzip/", stream=True,
-    timeout=50
+    "https://requests.readthedocs.io/_/downloads/en/stable/htmlzip/",
+    stream=True,
+    timeout=50,
 )
 if dl_req.ok:
     with open(zip_file, "wb") as file_handle:
         for chunk in dl_req:
             file_handle.write(chunk)
 else:
-    print(
-        f"ERROR: download failed -> request returned unexpected status code '{dl_req.status_code}' "
+    logger.critical(
+        f"download failed -> request returned unexpected status code '{dl_req.status_code}'"
     )
+    print(dl_req.text)
     sys.exit(1)
 
-logging.debug(
-    f"download of '{zip_file}' (size: {zip_file.stat().st_size} bytes) completed "
+logger.debug(
+    f"download of '{zip_file}' (size: {zip_file.stat().st_size} bytes) completed"
 )
 
-logging.debug(f"extracting '{zip_file}' ... ")
+logger.debug(f"extracting '{zip_file}' ...")
 
 with zipfile.ZipFile(zip_file, "r") as zip_fh:
     zip_fh.extractall()
 
-logging.debug(f"extracted '{zip_file}'")
+logger.debug(f"extracted '{zip_file}'")
 
-logging.debug("executing 'doc2dash' ... ")
+logger.debug("executing 'doc2dash' ...")
 
 os.system(
-    "doc2dash -n Requests -i requests-stable/_static/requests-sidebar.png -f -I index.html requests-stable/"
+    f"doc2dash -n Requests -i {zip_name}/_static/requests-sidebar.png -f -I index.html {zip_name}/"
 )
 
-logging.debug("executed 'doc2dash'")
+logger.debug("executed 'doc2dash'")
 
 docset_path = Path("Requests.docset")
 
 if not docset_path.exists():
-    logging.error(
-        f"while trying to access '{docset_path}' -> 'exists' is '{docset_path.exists()}' "
+    logger.error(
+        f"while trying to access '{docset_path}' -> 'exists' is '{docset_path.exists()}'"
     )
     sys.exit(1)
 
 docset_size = docset_path.stat().st_size
 
 if docset_size < 2:
-    logging.error(
-        f"while trying to read contents of '{docset_path}' -> 'size' is '{docset_size} bytes' "
+    logger.error(
+        f"while trying to read contents of '{docset_path}' -> 'size' is '{docset_size} bytes'"
     )
     sys.exit(1)
 
-logging.debug(f"size of '{docset_path}' is '{docset_size} bytes' ")
+logger.debug(f"size of '{docset_path}' is '{docset_size} bytes'")
 
 documents_path = docset_path / "Contents" / "Resources" / "Documents"
 
 index_path = documents_path / "index.html"
 
 if not index_path.exists():
-    logging.error(
-        f"while trying to access '{index_path}' -> 'exists' is '{index_path.exists()}' "
+    logger.error(
+        f"while trying to access '{index_path}' -> 'exists' is '{index_path.exists()}'"
     )
     sys.exit(1)
 
 index_size = index_path.stat().st_size
 
 if index_size < 2:
-    logging.error(
-        f"while trying to read contents of '{index_path}' -> 'size' is '{index_size} bytes' "
+    logger.error(
+        f"while trying to read contents of '{index_path}' -> 'size' is '{index_size} bytes'"
     )
     sys.exit(1)
 
-logging.debug(f"size of '{index_path}' is '{index_size} bytes' ")
+logger.debug(f"size of '{index_path}' is '{index_size} bytes'")
 
 index_html = ""
 
-logging.debug(f"reading from '{index_path}' ... ")
+logger.debug(f"reading from '{index_path}' ...")
 
 index_old_size = index_path.stat().st_size
 
@@ -111,35 +115,46 @@ with open(index_path, "r", encoding="utf-8") as file_handle:
 
 index_len = len(index_html)
 
-logging.debug(f"reading from '{index_path}' (length: {index_len}) completed ")
+logger.debug(f"reading from '{index_path}' (length: {index_len}) completed")
 
 dom_tree = HTMLParser(str(index_html))
 
-logging.debug("removing interactive contents ...")
+logger.debug("removing interactive contents ...")
 
 # docs: https://selectolax.readthedocs.io/en/latest/parser.html#selectolax.parser.HTMLParser.strip_tags
-dom_tree.strip_tags(["iframe","script","video", "#searchbox", "#native-ribbon", "a.github",
-                     "a.reference.external.image-reference", 'link[rel="search"]', 'link[rel="index"]']) 
+dom_tree.strip_tags(
+    [
+        "iframe",
+        "script",
+        "video",
+        "#searchbox",
+        "#native-ribbon",
+        "a.github",
+        "a.reference.external.image-reference",
+        'link[rel="search"]',
+        'link[rel="index"]',
+    ]
+)
 
 index_len = len(dom_tree.html)
-logging.debug(f"removed interactive contents -> new length: {index_len} ")
+logger.debug(f"removed interactive contents -> new length: {index_len} ")
 
 viewport_tags = dom_tree.css('meta[name="viewport"]')
 if len(viewport_tags) == 2:
     viewport_tags[1].decompose()
-    logging.debug("removed surplus 'viewport' tag")
+    logger.debug("removed surplus 'viewport' tag")
 
 static_files_path = documents_path / "_static"
 
 js_files = list(static_files_path.glob("*.js"))
 
-logging.debug(f"found {len(js_files)} obsolete javascript files")
+logger.debug(f"found {len(js_files)} obsolete javascript files")
 # pprint(js_files)
 for js_file in js_files:
     try:
         js_file.unlink()
     except Exception as error_msg:
-        logging.error(f"failed to delete '{js_file}' -> error: {error_msg}")
+        logger.error(f"failed to delete '{js_file}' -> error: {error_msg}")
 
 css_links = dom_tree.css('link[rel="stylesheet"]')
 css_styles = ""
@@ -148,20 +163,20 @@ import_pattern = re.compile(r"(?m)(\@import url\(\")([^\"]+)(\"\)\;)")
 for css_link in css_links:
     link_href = str(css_link.attrs["href"])
     link_path = documents_path / Path(link_href)
-    logging.debug(f"validating existance of '{link_path}' ...")
+    logger.debug(f"validating existance of '{link_path}' ...")
     if not link_path.exists():
-        logging.debug(f"removing '{css_link}' -> source file does not seem to exist")
+        logger.debug(f"removing '{css_link}' -> source file does not seem to exist")
         css_link.decompose()
     else:
-        logging.debug(f"found '{link_path}' (size: {link_path.stat().st_size}) ")
+        logger.debug(f"found '{link_path}' (size: {link_path.stat().st_size}) ")
 
-        logging.debug(f"reading from '{link_path}' ...")
+        logger.debug(f"reading from '{link_path}' ...")
 
         css_rules = ""
         with open(link_path, "r", encoding="utf-8") as file_handle:
             css_rules = "\n" + str(file_handle.read())
 
-        logging.debug(
+        logger.debug(
             f"reading from '{link_path}' (length: {link_path.stat().st_size}) completed"
         )
 
@@ -170,17 +185,17 @@ for css_link in css_links:
             for css_import in css_imports:
                 import_path = static_files_path / Path(str(css_import[1]))
                 if import_path.exists():
-                    logging.debug(f"reading from '{import_path}' ... ")
+                    logger.debug(f"reading from '{import_path}' ...")
 
                     with open(import_path, "r", encoding="utf-8") as file_handle:
                         css_rules = f"\n{file_handle.read()}\n{css_rules}"
 
-                    logging.debug(
-                        f"reading from '{import_path}' (length: {import_path.stat().st_size}) completed "
+                    logger.debug(
+                        f"reading from '{import_path}' (length: {import_path.stat().st_size}) completed"
                     )
                 else:
-                    logging.debug(
-                        f"reading from '{import_path}' failed -> file does not seem to exist "
+                    logger.debug(
+                        f"reading from '{import_path}' failed -> file does not seem to exist"
                     )
 
         css_styles += css_rules
@@ -225,7 +240,9 @@ for css_rule in css_sheet:
                 try:
                     css_rule.cssRules.remove(css_rule2)
                 except Exception as error_msg:
-                    logging.error(f"failed to remove css rule '{css_rule2}' -> error: {error_msg}")
+                    logger.opt(exception=error_msg).error(
+                        f"failed to remove css rule '{css_rule2}' -> error: {error_msg}"
+                    )
                 removed_counter += 1
 
             continue
@@ -239,12 +256,14 @@ for css_rule in css_sheet:
             # print(css_rule)
             remove_rules.append(css_rule)
     except Exception as error_msg:
-        logging.error(f"processing of css rule '{css_rule}' failed -> error: {error_msg}")
+        logger.opt(exception=error_msg).error(
+            f"processing of css rule '{css_rule}' failed -> error: {error_msg}"
+        )
 
 for css_rule in remove_rules:
     css_sheet.cssRules.remove(css_rule)
 
-logging.debug(f"removed {removed_counter + len(remove_rules)} obsolete css rules")
+logger.debug(f"removed {removed_counter + len(remove_rules)} obsolete css rules")
 
 old_css_len = len(css_styles)
 css_styles = str(css_sheet.cssText.decode())
@@ -256,18 +275,18 @@ new_css_len = len(css_styles)
 
 css_files = list(static_files_path.glob("*.css"))
 
-logging.debug(f"found {len(css_files)} obsolete css files")
+logger.debug(f"found {len(css_files)} obsolete css files")
 # pprint(js_files)
 for css_file in css_files:
     try:
         css_file.unlink()
     except Exception as error_msg:
-        logging.error(f"failed to delete '{css_file}' -> error: {error_msg}")
+        logger.opt(exception=error_msg).error(f"failed to delete '{css_file}' -> error: {error_msg}")
 
 css_len_diff = old_css_len - new_css_len
 css_len_percent = css_len_diff / old_css_len * 100
-logging.debug(
-    f"reduced size of css by {css_len_diff} characters (to ca. {round(css_len_percent, 1)} percent of original) "
+logger.debug(
+    f"reduced size of css by {css_len_diff} characters (to ca. {round(css_len_percent, 1)} percent of original)"
 )
 
 # remove css comments -> not possible using css_parser
@@ -278,21 +297,22 @@ with open(css_min_path, "w+", encoding="utf-8") as file_handle:
 
 index_html = str(dom_tree.html)
 
-logging.debug(f"writing to '{index_path}' ... ")
+logger.debug(f"writing to '{index_path}' ...")
 
 try:
     with open(index_path, "w+", encoding="utf-8") as file_handle:
-        file_handle.write(htmlmin.minify(index_html, remove_empty_space=True,
-                          remove_comments=True))
+        file_handle.write(
+            htmlmin.minify(index_html, remove_empty_space=True, remove_comments=True)
+        )
 except Exception as error_msg:
-    logging.error(f"minification of '{index_path}' failed -> error: {error_msg}")
+    logger.opt(exception=error_msg).error(f"minification of '{index_path}' failed -> error: {error_msg}")
     with open(index_path, "w+", encoding="utf-8") as file_handle:
         file_handle.write(index_html)
 
 index_new_size = index_path.stat().st_size
 index_len_diff = index_old_size - index_new_size
 
-logging.debug(
+logger.debug(
     f"writing to '{index_path}' completed -> reduced size by {index_len_diff} bytes"
 )
 
@@ -303,8 +323,8 @@ img_files = (
     + list(static_files_path.glob("*.svg"))
 )
 
-logging.debug(
-    f"found {len(img_files)} images (.png, .jpg, .svg) in '{static_files_path}' "
+logger.debug(
+    f"found {len(img_files)} images (.png, .jpg, .svg) in '{static_files_path}'"
 )
 
 for img_file in img_files:
@@ -315,23 +335,30 @@ for img_file in img_files:
         if file_name in css_styles:
             continue
         else:
-            logging.debug(
+            logger.debug(
                 f"removing image '{img_file}' -> file name '{file_name}' has not been found in css or html"
             )
             try:
                 img_file.unlink()
             except Exception as error_msg:
-                logging.error(f"failed to delete '{img_file}' -> error: {error_msg}")
+                logger.opt(exception=error_msg).error(f"failed to delete '{img_file}' -> error: {error_msg}")
     except Exception as error_msg:
-        logging.error(f"failed to validate existance of '{img_file}' -> error: {error_msg}")
+        logger.opt(exception=error_msg).error(
+            f"failed to validate existance of '{img_file}' -> error: {error_msg}"
+        )
+
+# delete now obsolete files
+unzip_path = zip_file.parent / zip_file.stem
+shutil.rmtree(unzip_path)
+zip_file.unlink()
 
 sys.exit(0)
 
 meta_path = docset_path / "meta.json"
 
-#FIXME: search and fix bug
+# FIXME: search and fix bug
 if not meta_path.exists():
-    logging.debug(f"preparing contents of '{meta_path}' ... ")
+    logger.debug(f"preparing contents of '{meta_path}' ... ")
 
     requests_version = "2.31.0"
 
@@ -352,4 +379,4 @@ if not meta_path.exists():
     with open(meta_path, "w+", encoding="utf-8") as file_handle:
         file_handle.write(json.dumps(meta_json))
 
-    logging.debug(f"wrote contents of '{meta_path}' ")
+    logger.debug(f"wrote contents of '{meta_path}' ")
