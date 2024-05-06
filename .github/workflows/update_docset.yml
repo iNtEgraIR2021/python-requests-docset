@@ -81,16 +81,19 @@ jobs:
           name: "log files"
           retention-days: 5
 
-      # - name: git push to github
-      #   run: |
-      #     cd requests_docset_gh
-      #     git config --global user.name ''
-      #     git config --global user.email ''
-      #     git remote add github-origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
-      #     git fetch --all
-      #     git checkout 'main'
-      #     git reset
-      #     git add Requests.docset/ || true
-      #     git status
-      #     git commit -m "update docset" || true
-      #     git push github-origin main || true
+      - name: git push to github
+        run: |
+          cd requests_docset_gh
+          git config --global user.name '$GITHUB_ACTOR'
+          git config --global user.email '$GITHUB_ACTOR_ID+$GITHUB_ACTOR@users.noreply.github.com'
+          git remote add github-origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
+          git fetch --all
+          git checkout 'main'
+          git reset
+          date +"%Y-%m-%d__%H-%M-%S" > lastmod.txt
+          git add lastmod.txt
+          zip -r Requests.docset.zip Requests.docset/
+          git add Requests.docset.zip || true
+          git status
+          git commit -m "chore: update docset zip [skip ci]" || true
+          git push github-origin main || true
