@@ -2,5 +2,5 @@ css-parser==1.0.10
 doc2dash==3.1.0
 htmlmin==0.1.12
 loguru==0.7.2
-requests==2.31.0
+requests==2.32.3
 selectolax==0.3.20
