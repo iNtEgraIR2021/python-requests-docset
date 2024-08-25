@@ -18,7 +18,15 @@ from logging_interceptor import InterceptHandler
 logger = loguru.logger
 logger.remove()
 # init rotated log file
-logger.add("debug.log", rotation="10 MB", catch=True, delay=True, encoding="utf-8")
+logger.add(
+    "debug.log",
+    rotation="10 MB",
+    retention="7 days",
+    backtrace=True,
+    catch=True,
+    delay=True,
+    encoding="utf-8",
+)
 # also log to standard output (console)
 logger.add(sys.stdout, colorize=True)
 
@@ -26,7 +34,8 @@ logging.basicConfig(handlers=[InterceptHandler()], level=logging.DEBUG, force=Tr
 
 css_parser.log.setLevel(logging.INFO)
 
-zip_file = Path("requests-stable.zip")
+parent_dir = Path(__file__).parent
+zip_file = parent_dir / "requests-stable.zip"
 zip_name = zip_file.parts[-1]
 
 logger.debug(f"downloading '{zip_name}' to {zip_file.absolute().as_posix()} ...")
@@ -163,7 +172,7 @@ import_pattern = re.compile(r"(?m)(\@import url\(\")([^\"]+)(\"\)\;)")
 for css_link in css_links:
     link_href = str(css_link.attrs["href"])
     link_path = documents_path / Path(link_href)
-    logger.debug(f"validating existance of '{link_path}' ...")
+    logger.debug(f"validating existence of '{link_path}' ...")
     if not link_path.exists():
         logger.debug(f"removing '{css_link}' -> source file does not seem to exist")
         css_link.decompose()
@@ -281,7 +290,9 @@ for css_file in css_files:
     try:
         css_file.unlink()
     except Exception as error_msg:
-        logger.opt(exception=error_msg).error(f"failed to delete '{css_file}' -> error: {error_msg}")
+        logger.opt(exception=error_msg).error(
+            f"failed to delete '{css_file}' -> error: {error_msg}"
+        )
 
 css_len_diff = old_css_len - new_css_len
 css_len_percent = css_len_diff / old_css_len * 100
@@ -305,7 +316,9 @@ try:
             htmlmin.minify(index_html, remove_empty_space=True, remove_comments=True)
         )
 except Exception as error_msg:
-    logger.opt(exception=error_msg).error(f"minification of '{index_path}' failed -> error: {error_msg}")
+    logger.opt(exception=error_msg).error(
+        f"minification of '{index_path}' failed -> error: {error_msg}"
+    )
     with open(index_path, "w+", encoding="utf-8") as file_handle:
         file_handle.write(index_html)
 
@@ -341,10 +354,12 @@ for img_file in img_files:
             try:
                 img_file.unlink()
             except Exception as error_msg:
-                logger.opt(exception=error_msg).error(f"failed to delete '{img_file}' -> error: {error_msg}")
+                logger.opt(exception=error_msg).error(
+                    f"failed to delete '{img_file}' -> error: {error_msg}"
+                )
     except Exception as error_msg:
         logger.opt(exception=error_msg).error(
-            f"failed to validate existance of '{img_file}' -> error: {error_msg}"
+            f"failed to validate existence of '{img_file}' -> error: {error_msg}"
         )
 
 # delete now obsolete files

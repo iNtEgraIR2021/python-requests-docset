@@ -1,4 +1,3 @@
-
 import logging
 import sys
 
@@ -6,13 +5,15 @@ import loguru
 
 logger = loguru.logger
 
+
 class InterceptHandler(logging.Handler):
     """
     intercept log messages logged with the logging module
-    
+
     source: https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging
     also see: https://stackoverflow.com/a/70620198
     """
+
     def emit(self, record):
         # Get corresponding Loguru level if it exists.
         try:
@@ -26,4 +27,6 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
